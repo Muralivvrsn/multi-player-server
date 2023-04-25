@@ -1,36 +1,62 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
 const cors = require("cors");
-const uuid = require("uuid")
+const uuid = require("uuid");
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server,{
-  cors:{
-    origin:"http://localhost:3000",
-    methods: ["GET", "POST"]
-  }
+let users = [];
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
 });
 app.use(cors());
-app.use(express.json())
-io.on('connection', (socket) => {
-  console.log('A client connected', socket.id);
+app.use(express.json());
+io.on("connection", (socket) => {
+  // console.log("A client connected", socket.id);
+  // console.log(users)
 
-  socket.on('message', (data) => {
-    console.log(`Received message from client: ${data.name}`);
-    io.emit('message', `Echo: ${data}`);
+  // creating room id
+  socket.on("create-room", () => {
+    const id = uuid.v4();
+    io.emit("room-id", {
+      id,
+    });
   });
-  socket.on('create-room',()=>{
-    io.emit('create-room', uuid.v4())
+
+  //checking if room is full or not
+  socket.on("room-full", () => {
+    const empty = users.length >= 4 ? false : true;
+    socket.emit("room-full", empty);
+  });
+
+  // joining the room
+  socket.on("join-room", (data) => {
+    socket.join(data.room);
+    socket.handshake.query.room = data.room;
+    const user = { id: socket.id, name: data.name };
+    users.push(user);
+    io.to(data.room).emit("joined", { user, users });
+  });
+
+
+  socket.on("message-room",(data)=>{
+    io.to(data).emit("room",users.length);
   })
-  socket.on('join-room',(id)=>{
-    socket.to(id).emit('joined-room',id);
-  })
-  socket.on('disconnect', () => {
-    console.log('A client disconnected');
+  // sending message to the room
+  socket.on("send_message", (data) => {
+    io.to(data.room).emit("recieved_message", data);
+  });
+  //if user disconnected or not
+  socket.on("disconnect", () => {
+    const user = users.find((user) => user.id === socket.id);
+    users = users.filter((item) => item.id !== socket.id);
+    io.to(socket.handshake.query.room).emit("player-out", { user, users });
   });
 });
 
 server.listen(4000, () => {
-  console.log('Server listening on port 3000');
+  console.log("Server listening on port 3000");
 });
