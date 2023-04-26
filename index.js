@@ -6,6 +6,7 @@ const uuid = require("uuid");
 const app = express();
 const server = http.createServer(app);
 let users = [];
+const port = process.env.PORT || 4000
 const io = new Server(server, {
   cors: {
     origin: "http://localhost:3000",
@@ -60,6 +61,6 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(4000, () => {
+server.listen(port, () => {
   console.log("Server listening on port 4000");
 });
