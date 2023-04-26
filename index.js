@@ -15,41 +15,44 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 io.on("connection", (socket) => {
-  // console.log("A client connected", socket.id);
-  // console.log(users)
-
-  // creating room id
   socket.on("create-room", () => {
     const id = uuid.v4();
-    io.emit("room-id", {
+    socket.emit("room-id", {
       id,
     });
   });
-
-  //checking if room is full or not
   socket.on("room-full", () => {
-    const empty = users.length >= 4 ? false : true;
+    const empty = users.length;
+    users = (empty>4?users.slice(-1):users);
     socket.emit("room-full", empty);
   });
-
-  // joining the room
+  socket.on("full-room",(data)=>{
+    io.to(data).emit("full-room",users.length);
+  })
   socket.on("join-room", (data) => {
     socket.join(data.room);
     socket.handshake.query.room = data.room;
     const user = { id: socket.id, name: data.name };
     users.push(user);
-    io.to(data.room).emit("joined", { user, users });
+    console.log(users);
+    setTimeout(() => {
+      io.to(data.room).emit("joined", { user, users });
+    }, 100);
   });
 
-
-  socket.on("message-room",(data)=>{
-    io.to(data).emit("room",users.length);
-  })
-  // sending message to the room
+  socket.on("message-room", (data) => {
+    io.to(data).emit("room", true);
+  });
   socket.on("send_message", (data) => {
-    io.to(data.room).emit("recieved_message", data);
+  const h = Math.floor(Math.random() * 360);
+  const s = Math.floor(Math.random() * 100);
+  const l = Math.floor(Math.random() * 100);
+  const bgcolor = `hsl(${h}deg, ${s}%, ${l}%)`;
+    io.to(data.room).emit("recieved_message", {
+      name:data.name,
+      color:bgcolor
+    });
   });
-  //if user disconnected or not
   socket.on("disconnect", () => {
     const user = users.find((user) => user.id === socket.id);
     users = users.filter((item) => item.id !== socket.id);
@@ -58,5 +61,5 @@ io.on("connection", (socket) => {
 });
 
 server.listen(4000, () => {
-  console.log("Server listening on port 3000");
+  console.log("Server listening on port 4000");
 });
