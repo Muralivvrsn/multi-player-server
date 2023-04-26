@@ -9,7 +9,7 @@ let users = [];
 const port = process.env.PORT || 4000
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "https://aesthetic-druid-200d9f.netlify.app/",
     methods: ["GET", "POST"],
   },
 });
